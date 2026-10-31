@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizador y analizador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,480;0,9..144,600;1,9..144,420&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#121110; --panel:#1A1815; --card:#17150F; --ink:#FAF7F0; --dim:#ACA398; --faint:#8C8378;
+  --accent:#D6A24C; --accent-ink:#201705; --teal:#7FC2A6; --line:rgba(250,247,240,.10); --line2:rgba(250,247,240,.24);
+  --danger:#E08A6F; --r:10px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;font-weight:600}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 120px}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+header.top h1{margin:0;font-size:clamp(26px,3.4vw,36px);line-height:1.1}
+header.top h1 em{font-style:italic;font-weight:420;color:var(--accent)}
+header.top p{margin:6px 0 0;color:var(--dim);max-width:60ch}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start}
+@media (max-width:960px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+/* stepper */
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;padding:0;list-style:none}
+.steps button{background:var(--card);border:1px solid var(--line);border-radius:30px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;display:flex;gap:8px;align-items:center}
+.steps button .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:rgba(250,247,240,.08)}
+.steps button[aria-current="step"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.steps button[aria-current="step"] .n{background:rgba(32,23,5,.18)}
+.steps button.done .n{background:var(--teal);color:#0f1f19}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:24px}
+.step{display:none}.step.on{display:block}
+.step h2{margin:0 0 4px;font-size:24px}
+.step > p.lead{margin:0 0 20px;color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.opt{position:relative;display:block;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;cursor:pointer;transition:border-color .15s,transform .15s}
+.opt:hover{border-color:var(--line2)}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.opt:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.opt:has(input:disabled){cursor:default;opacity:.75}
+.opt b{display:block;font-size:15px;margin-bottom:4px}
+.opt small{display:block;color:var(--dim);font-size:13px;line-height:1.45}
+.opt .meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:12.5px;color:var(--faint)}
+.opt .meta strong{color:var(--accent);font-weight:600}
+.opt .tag{position:absolute;top:12px;right:12px;font-size:11px;font-weight:600;letter-spacing:.04em;padding:3px 8px;border-radius:20px;background:rgba(127,194,166,.15);color:var(--teal)}
+.opt .check{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:5px;border:1.5px solid var(--line2)}
+.opt:has(input:checked) .check{background:var(--accent);border-color:var(--accent)}
+.opt:has(input:checked) .check::after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid var(--accent-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.addon{padding-right:44px}
+
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px 16px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+.field .hint{display:block;font-size:12.5px;color:var(--faint);margin-top:5px}
+.field input,.field select,.field textarea{width:100%;background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:10px 12px;min-height:44px}
+.field textarea{min-height:80px;resize:vertical}
+.field.full{grid-column:1/-1}
+.qty{display:flex;align-items:center;gap:0;border:1px solid var(--line2);border-radius:8px;overflow:hidden;width:max-content;background:var(--panel)}
+.qty button{width:44px;height:44px;background:none;border:0;cursor:pointer;font-size:18px;color:var(--dim)}
+.qty button:hover{color:var(--ink);background:rgba(250,247,240,.05)}
+.qty input{width:70px;text-align:center;border:0!important;border-left:1px solid var(--line)!important;border-right:1px solid var(--line)!important;border-radius:0!important;background:none!important}
+.hidden{display:none!important}
+.sub{margin:26px 0 12px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:600}
+
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:24px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 18px;border-radius:8px;border:1px solid var(--line2);background:none;cursor:pointer;font-weight:600;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--dim)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.pri:hover{background:#E3B25F}
+.btn.wa{background:#3F8F73;border-color:#3F8F73;color:#F3EEE3}
+.btn.wa:hover{background:#4AA383}
+.btn.ghost{border-color:transparent;color:var(--dim)}
+
+/* resumen */
+.sum{position:sticky;top:16px}
+.sum .card{padding:22px}
+.sum h3{margin:0 0 2px;font-size:20px}
+.sum .who{color:var(--dim);font-size:13px;margin:0 0 16px;min-height:1em}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.big div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
+.big span{display:block;font-size:12px;color:var(--faint)}
+.big b{display:block;font-family:'Fraunces',Georgia,serif;font-size:21px;color:var(--accent);line-height:1.2;margin-top:2px}
+.big .wide{grid-column:1/-1}
+.big .wide b{color:var(--ink)}
+.lines{list-style:none;padding:0;margin:0 0 14px;font-size:13.5px}
+.lines li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line2)}
+.lines li span:last-child{white-space:nowrap;color:var(--dim);text-align:right}
+.lines li.neg span:last-child{color:var(--teal)}
+.lines li:last-child{border-bottom:0}
+.kv{font-size:13px;color:var(--dim);margin:0 0 6px}
+.kv b{color:var(--ink);font-weight:600}
+.note{font-size:12.5px;color:var(--faint);margin:12px 0 0}
+.acts{display:grid;gap:8px;margin-top:16px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.empty{color:var(--faint);font-size:13.5px;margin:0 0 14px}
+
+/* barra inferior mobile */
+.mbar{display:none}
+@media (max-width:960px){
+  .sum{position:static}
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(26,24,21,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line2);padding:10px 16px;justify-content:space-between;align-items:center;gap:12px}
+  .mbar div{font-size:12px;color:var(--dim);line-height:1.3}
+  .mbar b{display:block;font-family:'Fraunces',Georgia,serif;color:var(--accent);font-size:17px}
+}
+@media (max-width:520px){.card{padding:18px}.wrap{padding:20px 16px 110px}.big b{font-size:18px}}
+
+/* impresión: solo el presupuesto */
+@media print{
+  body{background:#fff;color:#111}
+  header.top,.steps,.step,.nav,.acts,.mbar,.toast{display:none!important}
+  .layout{display:block}.sum{position:static}
+  .sum .card{border:0;padding:0;background:#fff}
+  .big div{background:#fff;border-color:#ccc}.big b{color:#111!important}
+  .lines li{border-color:#bbb}.lines li span:last-child,.kv,.note,.sum .who,.big span{color:#444}
+  .kv b{color:#111}
+  #printHead{display:block!important}
+  #sHoras{display:none!important}
+}
+#printHead{display:none;margin-bottom:16px}
+#printHead h2{margin:0;font-size:24px}
+#printHead p{margin:4px 0 0;font-size:13px}
+
+/* ---------- modos ---------- */
+.modes{display:flex;gap:6px;margin:0 0 22px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;width:max-content;max-width:100%}
+.modes button{border:0;background:none;color:var(--dim);font-weight:600;padding:10px 16px;border-radius:9px;cursor:pointer;min-height:44px}
+.modes button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+body.m-analizar #modoCotizar, body.m-analizar .mbar{display:none!important}
+body:not(.m-analizar) #modoAnalizar{display:none!important}
+
+/* ---------- carga ---------- */
+.src{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.src{grid-template-columns:minmax(0,1fr)}}
+.src .box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px}
+.src .box b{font-size:15px}
+.src .box small{color:var(--dim);font-size:13px;line-height:1.45}
+.src input[type=url]{width:100%;background:var(--card);border:1px solid var(--line2);border-radius:8px;padding:10px 12px;min-height:44px}
+.drop{border:1.5px dashed var(--line2);border-radius:var(--r);padding:14px;text-align:center;color:var(--dim);font-size:13px;margin-top:12px}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+.status{margin:14px 0 0;font-size:13.5px;color:var(--dim);min-height:1.2em}
+.status.err{color:var(--danger)}
+.status.ok{color:var(--teal)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- resultado ---------- */
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+.stats span{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12.5px;color:var(--dim)}
+.stats span b{color:var(--ink);font-weight:600}
+.tier{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line2);border-radius:var(--r);padding:14px 16px;margin-bottom:16px}
+.tier .lvl{font-family:'Fraunces',Georgia,serif;font-size:26px;color:var(--accent);line-height:1}
+.tier p{margin:2px 0 0;color:var(--dim);font-size:13.5px}
+.feat{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:start;padding:12px 0;border-bottom:1px dashed var(--line2)}
+.feat:last-child{border-bottom:0}
+.feat input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent)}
+.feat b{font-size:14.5px}
+.feat small{display:block;color:var(--dim);font-size:12.5px}
+.feat .ev{display:block;color:var(--faint);font-size:12px;margin-top:2px;word-break:break-word}
+.feat .pr{text-align:right;font-size:13px;color:var(--dim);white-space:nowrap}
+.feat .pr.inc{color:var(--teal)}
+details.more{margin-top:10px}
+details.more summary{cursor:pointer;color:var(--dim);font-size:13.5px;font-weight:600;padding:8px 0;min-height:44px;display:flex;align-items:center}
+.motivos{display:grid;gap:8px}
+.motivo{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.motivo input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+.motivo label{flex:1;font-size:14px;cursor:pointer}
+.motivo input[type=number]{width:72px;background:var(--card);border:1px solid var(--line2);border-radius:6px;padding:6px 8px;text-align:right;min-height:36px}
+.toggle{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:10px;cursor:pointer}
+.toggle input{width:20px;height:20px;accent-color:var(--accent)}
+.mk{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px}
+.mk span{display:block;font-size:12px;color:var(--faint)}
+.mk b{display:block;font-family:'Fraunces',Georgia,serif;font-size:18px;line-height:1.25;margin-top:2px}
+.mk small{display:block;color:var(--dim);font-size:12px;margin-top:4px}
+.tc{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--faint);margin-top:8px}
+.tc input{width:90px;background:var(--card);border:1px solid var(--line2);border-radius:6px;padding:4px 8px;min-height:32px}
+.tot{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;font-size:14px}
+.tot.strike span:last-child{text-decoration:line-through;color:var(--faint)}
+.tot.neg span:last-child{color:var(--teal)}
+.tot.big2{font-size:16px;border-top:1px solid var(--line2);margin-top:4px;padding-top:10px}
+.tot.big2 span:last-child{font-family:'Fraunces',Georgia,serif;font-size:24px;color:var(--accent)}
+@media print{
+  body.m-analizar header.top, body.m-analizar .modes, body.m-analizar #aMain, body.m-analizar .acts{display:none!important}
+  body.m-analizar #modoAnalizar{display:block}
+  body.m-analizar #aSumCard{border:0;padding:0;background:#fff}
+  body.m-analizar .mk, body.m-analizar .tc{display:none!important}
+  body.m-analizar .tot span:last-child{color:#111!important}
+  body.m-analizar #aPrintHead{display:block!important}
+}
+#aPrintHead{display:none;margin-bottom:16px}
+#aPrintHead h2{margin:0;font-size:24px}
+#aPrintHead p{margin:4px 0 0;font-size:13px}
+@media print{
+  body.a-ocultar-desc #aRowLista, body.a-ocultar-desc #aRowDesc{display:none!important}
+  body.m-analizar #aSrc{display:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Cotizador de <em>apps y sitios</em></h1>
+      <p>Completá paso a paso lo que te contestó el cliente. El presupuesto se calcula solo y se guarda en este navegador.</p>
+    </div>
+    <button class="btn ghost" id="reset" type="button">Empezar de cero</button>
+  </header>
+
+  <div class="modes" role="tablist" aria-label="Modo">
+    <button type="button" role="tab" data-modo="cotizar" aria-selected="true">Cotizar paso a paso</button>
+    <button type="button" role="tab" data-modo="analizar" aria-selected="false">Analizar trabajo hecho</button>
+  </div>
+
+  <div class="layout" id="modoCotizar">
+    <main>
+      <ol class="steps" id="steps" aria-label="Pasos"></ol>
+      <div class="card">
+
+        <!-- 1 -->
+        <section class="step" data-step="0" aria-labelledby="h0">
+          <h2 id="h0">El cliente</h2>
+          <p class="lead">Datos para el encabezado del presupuesto. Todos son opcionales.</p>
+          <div class="fields">
+            <div class="field"><label for="cNombre">Nombre del negocio</label><input id="cNombre" data-k="cNombre" placeholder="Ej.: Pizzería La Esquina"></div>
+            <div class="field"><label for="cContacto">Persona de contacto</label><input id="cContacto" data-k="cContacto" placeholder="Ej.: Laura"></div>
+            <div class="field"><label for="cTel">WhatsApp del cliente</label><input id="cTel" data-k="cTel" inputmode="tel" placeholder="Ej.: 2944 123456"><span class="hint">Para mandarle el presupuesto directo.</span></div>
+            <div class="field"><label for="cInicio">Fecha de inicio</label><input id="cInicio" data-k="cInicio" type="date"><span class="hint">Para calcular la fecha de entrega.</span></div>
+            <div class="field full"><label for="cNotas">Notas de la charla</label><textarea id="cNotas" data-k="cNotas" placeholder="Lo que te contó: cómo trabaja hoy, qué le preocupa, plazos…"></textarea></div>
+          </div>
+        </section>
+
+        <!-- 2 -->
+        <section class="step" data-step="1" aria-labelledby="h1">
+          <h2 id="h1">Tipo de cliente</h2>
+          <p class="lead">Define los planes disponibles y la forma de pago.</p>
+          <div class="grid" id="segGrid"></div>
+        </section>
+
+        <!-- 3 -->
+        <section class="step" data-step="2" aria-labelledby="h2">
+          <h2 id="h2">Plan base</h2>
+          <p class="lead">Elegí el que mejor encaja con lo que pidió. Las funciones que ya trae se marcan solas en el paso siguiente.</p>
+          <div class="grid" id="planGrid"></div>
+          <div id="medidaBox" class="fields hidden" style="margin-top:16px">
+            <div class="field"><label for="mSetup">Puesta en marcha a medida ($)</label><input id="mSetup" data-k="mSetup" type="number" min="0" step="50000" inputmode="numeric"></div>
+            <div class="field"><label for="mAbono">Abono a medida ($/mes)</label><input id="mAbono" data-k="mAbono" type="number" min="0" step="5000" inputmode="numeric"></div>
+            <div class="field"><label for="mSem">Plazo (semanas)</label><input id="mSem" data-k="mSem" type="number" min="1" step="1" inputmode="numeric"></div>
+          </div>
+        </section>
+
+        <!-- 4 -->
+        <section class="step" data-step="3" aria-labelledby="h3">
+          <h2 id="h3">Funciones adicionales</h2>
+          <p class="lead">Marcá lo que pidió además del plan. Lo que dice «Incluida» ya está en el precio.</p>
+          <div class="grid" id="addGrid"></div>
+          <p class="sub">Cantidades</p>
+          <div class="fields" id="qtyFields"></div>
+        </section>
+
+        <!-- 5 -->
+        <section class="step" data-step="4" aria-labelledby="h4">
+          <h2 id="h4">Publicación y medición</h2>
+          <p class="lead">Dónde va a estar online. No cambia el precio: el dominio está incluido en el abono.</p>
+          <div class="grid" id="pubGrid"></div>
+          <div class="fields" style="margin-top:16px">
+            <div class="field full"><label for="pubUrl">Dirección elegida</label><input id="pubUrl" data-k="pubUrl" placeholder="Ej.: laesquina.com.ar o la-esquina.vercel.app"></div>
+          </div>
+        </section>
+
+        <!-- 6 -->
+        <section class="step" data-step="5" aria-labelledby="h5">
+          <h2 id="h5">Ajustes finales</h2>
+          <p class="lead">Descuentos, urgencia y validez del presupuesto.</p>
+          <div class="fields">
+            <div class="field"><label for="desc">Descuento en la puesta en marcha</label>
+              <select id="desc" data-k="desc">
+                <option value="0">Sin descuento</option>
+                <option value="10">10% · pago de contado</option>
+                <option value="20">20% · primer cliente del rubro</option>
+                <option value="25">25% · primer cliente del rubro</option>
+                <option value="30">30% · primer cliente del rubro</option>
+              </select><span class="hint">El abono no se descuenta: es tu ingreso fijo.</span></div>
+            <div class="field"><label for="urg">Urgencia</label>
+              <select id="urg" data-k="urg">
+                <option value="0">Plazo normal</option>
+                <option value="1">Urgente: +25% y plazo 30% más corto</option>
+              </select></div>
+            <div class="field"><label for="valid">Validez del presupuesto (días)</label><input id="valid" data-k="valid" type="number" min="1" step="1" inputmode="numeric"></div>
+            <div class="field"><label for="hsSem">Tus horas por semana</label><input id="hsSem" data-k="hsSem" type="number" min="5" step="1" inputmode="numeric"><span class="hint">Para estimar horas y tu valor por hora.</span></div>
+          </div>
+        </section>
+
+        <div class="nav">
+          <button class="btn" id="prev" type="button">← Anterior</button>
+          <button class="btn pri" id="next" type="button">Siguiente →</button>
+        </div>
+      </div>
+    </main>
+
+    <aside class="sum" aria-label="Presupuesto">
+      <div class="card" id="sumCard">
+        <div id="printHead"><h2>Presupuesto</h2><p>Fausto Cordobes · WhatsApp 294 424-2906</p></div>
+        <h3>Presupuesto</h3>
+        <p class="who" id="sWho"></p>
+        <div class="big">
+          <div><span>Puesta en marcha</span><b id="sSetup">$0</b></div>
+          <div><span>Abono mensual</span><b id="sAbono">$0</b></div>
+          <div class="wide"><span>Plazo estimado</span><b id="sPlazo">—</b></div>
+        </div>
+        <p class="empty" id="sEmpty">Elegí un tipo de cliente y un plan para ver el detalle.</p>
+        <ul class="lines" id="sLines"></ul>
+        <p class="kv" id="sPagos"></p>
+        <p class="kv" id="sAnio"></p>
+        <p class="kv" id="sEntrega"></p>
+        <p class="kv" id="sPub"></p>
+        <p class="kv" id="sHoras"></p>
+        <p class="note" id="sNote">Precios finales para monotributista (Factura C). El abono incluye hosting, dominio, copias de seguridad, soporte y cambios chicos, y se ajusta cada 3 meses por IPC.</p>
+        <div class="acts">
+          <button class="btn pri" id="copy" type="button">Copiar presupuesto</button>
+          <a class="btn wa" id="wa" href="#" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+          <button class="btn" id="print" type="button">Imprimir o guardar PDF</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="layout" id="modoAnalizar">
+    <main id="aMain">
+      <div class="card">
+        <h2 style="margin:0 0 4px;font-size:24px">Analizar un trabajo hecho</h2>
+        <p style="margin:0 0 18px;color:var(--dim)">Cargá la página publicada o su código. El analizador detecta qué tiene, lo lista con su precio y lo compara con el mercado.</p>
+        <div class="src">
+          <div class="box">
+            <b>Enlace</b>
+            <small>La dirección de la página publicada.</small>
+            <label class="sr" for="aUrl">Enlace de la página</label>
+            <input id="aUrl" type="url" inputmode="url" placeholder="https://ejemplo.vercel.app">
+            <button class="btn pri" id="aUrlBtn" type="button">Analizar enlace</button>
+          </div>
+          <div class="box">
+            <b>Archivo .zip</b>
+            <small>El proyecto comprimido, como lo baja GitHub.</small>
+            <label class="btn" for="aZip">Elegir .zip</label>
+            <input id="aZip" class="sr" type="file" accept=".zip,application/zip">
+          </div>
+          <div class="box">
+            <b>Carpeta</b>
+            <small>La carpeta del proyecto, con código e imágenes.</small>
+            <label class="btn" for="aDir">Elegir carpeta</label>
+            <input id="aDir" class="sr" type="file" webkitdirectory directory multiple>
+          </div>
+        </div>
+        <div class="drop" id="aDrop">También podés soltar acá un .zip</div>
+        <p class="status" id="aStatus" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="card hidden" id="aRes" style="margin-top:18px">
+        <h2 style="margin:0 0 8px;font-size:22px">Qué tiene</h2>
+        <div class="stats" id="aStats"></div>
+        <div class="tier" id="aTier"></div>
+        <div class="fields" style="margin-bottom:6px">
+          <div class="field"><label for="aPlan">Plan base</label><select id="aPlan"></select><span class="hint">El analizador lo sugiere; cambialo si no corresponde.</span></div>
+          <div class="field"><label for="aPags">Páginas o secciones</label><input id="aPags" type="number" min="1" step="1" inputmode="numeric"><span class="hint">En sitios simples, las primeras 5 están incluidas.</span></div>
+        </div>
+        <p class="sub">Funciones detectadas</p>
+        <div id="aFeats"></div>
+        <details class="more"><summary>Agregar algo que no detectó</summary><div id="aFeatsMore"></div></details>
+      </div>
+
+      <div class="card hidden" id="aDescCard" style="margin-top:18px">
+        <h2 style="margin:0 0 4px;font-size:22px">Descuento</h2>
+        <p style="margin:0 0 14px;color:var(--dim)">Se aplica a la puesta en marcha. Los porcentajes se suman, hasta un 60%.</p>
+        <div class="motivos" id="aMotivos"></div>
+        <div class="fields" style="margin-top:14px">
+          <div class="field"><label for="aPct">Porcentaje libre (%)</label><input id="aPct" type="number" min="0" max="60" step="1" inputmode="numeric"></div>
+          <div class="field"><label for="aFijo">Monto fijo ($)</label><input id="aFijo" type="number" min="0" step="5000" inputmode="numeric"></div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="aAbonoDesc"> Aplicar el porcentaje también al abono mensual</label>
+        <label class="toggle"><input type="checkbox" id="aMostrar"> Mostrar el ahorro en el presupuesto del cliente</label>
+        <div class="fields" style="margin-top:14px">
+          <div class="field"><label for="aCli">Cliente</label><input id="aCli" placeholder="Nombre del negocio"></div>
+          <div class="field"><label for="aTel">WhatsApp del cliente</label><input id="aTel" inputmode="tel" placeholder="Ej.: 2944 123456"></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="sum" aria-label="Resultado del análisis">
+      <div class="card" id="aSumCard">
+        <div id="aPrintHead"><h2>Presupuesto</h2><p>Fausto Cordobes · WhatsApp 294 424-2906</p></div>
+        <h3>Resultado</h3>
+        <p class="who" id="aWho"></p>
+        <p class="empty" id="aEmpty">Cargá un enlace, un .zip o una carpeta para ver el resultado.</p>
+        <div id="aSum" class="hidden">
+          <div class="tot strike hidden" id="aRowLista"><span>Precio de lista</span><span id="aLista"></span></div>
+          <div class="tot neg hidden" id="aRowDesc"><span id="aDescLbl">Descuento</span><span id="aDesc"></span></div>
+          <div class="tot big2"><span>Puesta en marcha</span><span id="aSetup"></span></div>
+          <div class="tot"><span>Abono mensual</span><span id="aAbono"></span></div>
+          <div class="mk" style="margin-top:14px">
+            <span>Referencia de mercado (agencia o estudio)</span>
+            <b id="aMkt"></b>
+            <small id="aMktM"></small>
+            <small id="aMktPct"></small>
+            <div class="tc"><label for="aTc">Dólar BNA $</label><input id="aTc" type="number" min="1" step="10" inputmode="numeric"></div>
+          </div>
+          <ul class="lines" id="aLines"></ul>
+          <p class="note">Precios finales para monotributista (Factura C). El abono incluye hosting, dominio, copias de seguridad, soporte y cambios chicos, y se ajusta cada 3 meses por IPC.</p>
+          <p class="note" id="aSrc">Mercado: Develop Argentina (julio 2026) y Neolo (diciembre 2025), en dólares. Dólar oficial BNA venta $1.560 al 30/10/2026.</p>
+          <div class="acts">
+            <button class="btn pri" id="aCopy" type="button">Copiar presupuesto</button>
+            <a class="btn wa" id="aWa" href="#" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+            <button class="btn" id="aPrint" type="button">Imprimir o guardar PDF</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="mbar" id="mbar"><div>Puesta en marcha<b id="mSetupT">$0</b></div><div>Abono<b id="mAbonoT">$0</b></div><div>Plazo<b id="mPlazoT">—</b></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================
+   PRECIOS — editá acá cuando actualices la lista (cada 3 meses)
+   s = puesta en marcha · m = abono mensual · w = [semanas mín, máx]
+   inc = funciones adicionales que el plan ya incluye
+   ========================================================= */
+const SEGMENTOS = [
+  {id:'loc', nombre:'Local o emprendimiento', desc:'Comercios chicos, gastronomía, belleza, profesionales independientes.', pago:[50,50]},
+  {id:'med', nombre:'Negocio mediano o profesional', desc:'Clínicas, cabañas, institutos, talleres, estudios, inmobiliarias.', pago:[50,50]},
+  {id:'emp', nombre:'Empresa, cooperativa o municipio', desc:'Muchos usuarios, varios perfiles, trabajo en la calle.', pago:[40,30,30]}
+];
+const PLANES = [
+  {id:'web', seg:'loc', nombre:'Página web simple', desc:'Secciones, WhatsApp, mapa y dominio propio.', s:200000, m:15000, w:[1,1], inc:[]},
+  {id:'carta', seg:'loc', nombre:'Carta QR digital', desc:'Carta con fotos y precios, QR para mesas y panel para editar.', s:250000, m:25000, w:[1,1], inc:['panel']},
+  {id:'catalogo', seg:'loc', nombre:'Catálogo online', desc:'Productos, pedido por WhatsApp, Mercado Pago y panel de pedidos.', s:380000, m:35000, w:[2,2], inc:['panel','mp']},
+  {id:'turnos', seg:'loc', nombre:'Turnos online', desc:'Reserva desde el celular, 1 o 2 profesionales y recordatorio.', s:420000, m:40000, w:[2,3], inc:['panel']},
+  {id:'pedidos', seg:'loc', nombre:'Web app de pedidos', desc:'Instalable, carrito, delivery o take away, pagos, abierto/cerrado y panel.', s:550000, m:55000, w:[3,3], inc:['panel','mp','pwa']},
+  {id:'stock', seg:'loc', nombre:'Gestor de stock y caja', desc:'Stock con alertas, proveedores, gastos, caja y Excel.', s:600000, m:60000, w:[3,4], inc:['reportes']},
+  {id:'gym', seg:'loc', nombre:'Gimnasio o estudio', desc:'Socios, cuotas con aviso, asistencia con QR y clases con cupo.', s:600000, m:60000, w:[3,4], inc:[]},
+  {id:'pelu', seg:'loc', nombre:'Peluquería o estética completa', desc:'Turnos, caja, comisiones, productos y fidelidad.', s:650000, m:60000, w:[4,4], inc:['panel','cupones']},
+  {id:'gastro', seg:'loc', nombre:'Gastronomía completa', desc:'Pedidos, reservas de mesa, cupones y reporte de ventas.', s:800000, m:80000, w:[4,4], inc:['panel','mp','pwa','reservas','cupones','reportes']},
+  {id:'taller', seg:'med', nombre:'Taller o service técnico', desc:'Órdenes con seguimiento, presupuestos, historial y repuestos.', s:600000, m:55000, w:[3,4], inc:[]},
+  {id:'instituto', seg:'med', nombre:'Instituto o academia', desc:'Inscripciones, cuotas y deudores, asistencia y notas.', s:650000, m:60000, w:[4,5], inc:[]},
+  {id:'cabanas', seg:'med', nombre:'Cabañas u hostería', desc:'Reservas con seña, ocupación, check-in/out, pagos y saldos.', s:700000, m:65000, w:[4,5], inc:['mp']},
+  {id:'estudio', seg:'med', nombre:'Estudio profesional', desc:'Turnos, portal de clientes, vencimientos y trámites.', s:750000, m:70000, w:[5,5], inc:[]},
+  {id:'clinica', seg:'med', nombre:'Clínica o consultorio', desc:'Agenda, reserva online, recordatorios, ficha, presupuestos y cobros. Hasta 4 profesionales.', s:800000, m:70000, w:[6,6], inc:[], extraProf:true},
+  {id:'super', seg:'med', nombre:'Comercio grande o supermercado', desc:'Código de barras, punto de venta, cuentas corrientes y ARCA.', s:900000, m:85000, w:[5,6], inc:['arca','reportes']},
+  {id:'inmo', seg:'med', nombre:'Inmobiliaria', desc:'Alquileres con ICL/IPC, mora, liquidación y web de propiedades.', s:1100000, m:100000, w:[7,8], inc:[]},
+  {id:'logistica', seg:'emp', nombre:'Logística o fletes', desc:'Viajes, entregas con foto, liquidación a choferes y reportes.', s:1000000, m:95000, w:[6,7], inc:['reportes'], users:true},
+  {id:'coopAgua', seg:'emp', nombre:'Cooperativa de agua', desc:'Fichaje, órdenes de trabajo, sin señal y panel del jefe. Hasta 30 usuarios.', s:1200000, m:110000, w:[8,8], inc:['pwa','reportes'], users:true},
+  {id:'coopLuz', seg:'emp', nombre:'Cooperativa eléctrica', desc:'Reclamos, derivadores, operarios, guardias y sin señal. Hasta 40 usuarios.', s:1300000, m:130000, w:[8,8], inc:['pwa','reportes'], users:true},
+  {id:'medida', seg:'emp', nombre:'Sistema a medida', desc:'Procesos propios de la empresa. Cargás precio y plazo a mano.', s:1500000, m:130000, w:[8,10], inc:[], users:true, custom:true}
+];
+// d = días hábiles extra [mín, máx] · mNote = aclaración del abono
+const ADICIONALES = [
+  {id:'medicion', nombre:'Search Console, Analytics y Clarity', desc:'Verificación en Google, sitemap, eventos clave, mapas de calor y aviso de cookies.', s:60000, m:0, d:[2,2]},
+  {id:'informe', nombre:'Informe mensual de métricas', desc:'Visitas, clics a WhatsApp, pedidos y búsquedas, explicado simple.', s:0, m:15000, d:[0,0]},
+  {id:'seo', nombre:'SEO local', desc:'Google Maps, datos estructurados y textos para búsquedas de la zona.', s:50000, m:0, d:[1,2]},
+  {id:'panel', nombre:'Panel para editar contenido', desc:'El cliente actualiza textos, fotos y precios solo.', s:120000, m:5000, d:[3,4]},
+  {id:'pwa', nombre:'App instalable (PWA)', desc:'Se agrega al celular como una app y funciona con mala señal.', s:80000, m:0, d:[3,3]},
+  {id:'mp', nombre:'Pagos con Mercado Pago', desc:'Checkout, señas y confirmación automática del pago.', s:120000, m:5000, d:[3,4]},
+  {id:'reservas', nombre:'Reservas de mesa', desc:'Con confirmación y cupos por horario.', s:120000, m:10000, d:[4,4]},
+  {id:'cupones', nombre:'Cupones y fidelidad', desc:'Descuentos, promociones y tarjeta de puntos.', s:100000, m:0, d:[3,3]},
+  {id:'reportes', nombre:'Reportes y Excel', desc:'Ventas por período, más vendidos y exportación.', s:80000, m:0, d:[3,3]},
+  {id:'idiomas', nombre:'Varios idiomas', desc:'Inglés y portugués, ideal para turismo.', s:120000, m:0, d:[4,4]},
+  {id:'insumos', nombre:'Stock de insumos con recetas', desc:'Cada venta descuenta los ingredientes.', s:200000, m:15000, d:[5,5]},
+  {id:'waAuto', nombre:'Recordatorios de WhatsApp automáticos', desc:'Envío sin intervención con la API oficial.', s:80000, m:15000, d:[3,4], mNote:'+ costo por mensaje'},
+  {id:'arca', nombre:'Facturación electrónica ARCA', desc:'Factura A, B o C desde el sistema.', s:250000, m:15000, d:[5,5]},
+  {id:'bot', nombre:'Bot de WhatsApp con IA', desc:'Preguntas frecuentes, horarios, precios y disponibilidad.', s:200000, m:30000, d:[5,5], mNote:'+ uso de la IA'},
+  {id:'hc', nombre:'Historia clínica con validez legal', desc:'Registro inalterable, accesos por nivel y firma digital. Entre $600.000 y $900.000.', s:750000, m:20000, d:[20,30]}
+];
+const PUBLICACION = [
+  {id:'vercel', nombre:'Dirección gratis de Vercel', desc:'nombre-del-local.vercel.app · online en minutos.'},
+  {id:'dominio', nombre:'Dominio propio', desc:'nombredellocal.com.ar · a nombre del cliente.'},
+  {id:'sub', nombre:'Subdominio de tu plataforma', desc:'local.tuplataforma.com.ar.'}
+];
+const PRECIO = {profExtra:12000, userExtra:3000, prod100:30000, visita:25000, migracion:{0:[0,0,0], 1:[60000,2,2], 2:[100000,3,4], 3:[150000,5,5]}};
+
+/* ========================================================= */
+const KEY = 'cotizador-apps-v1';
+const DEF = {step:0, seg:'', plan:'', adds:[], pub:'vercel', profExtra:0, userExtra:0, prods:0, visitas:0, migr:'0', integ:0, integDias:0,
+  cNombre:'', cContacto:'', cTel:'', cInicio:'', cNotas:'', mSetup:1500000, mAbono:130000, mSem:8, pubUrl:'', desc:'0', urg:'0', valid:15, hsSem:20};
+let S = load();
+function load(){ try{ const v = JSON.parse(localStorage.getItem(KEY)); return Object.assign({}, DEF, v||{}); }catch(e){ return {...DEF}; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const money = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(Math.round(n));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtW = w => { const r = x => Math.round(x*2)/2; const a=r(w[0]), b=r(w[1]); const t = x => String(x).replace('.',','); return a===b ? `${t(a)} ${a===1?'semana':'semanas'}` : `${t(a)} a ${t(b)} semanas`; };
+const STEPS = ['Cliente','Tipo','Plan','Adicionales','Publicación','Ajustes'];
+
+/* ---------- render de opciones ---------- */
+function renderSteps(){
+  $('#steps').innerHTML = STEPS.map((t,i)=>`<li><button type="button" data-go="${i}" ${i===S.step?'aria-current="step"':''} class="${i<S.step?'done':''}"><span class="n">${i<S.step?'✓':i+1}</span>${t}</button></li>`).join('');
+  document.querySelectorAll('.step').forEach(el => el.classList.toggle('on', +el.dataset.step === S.step));
+  $('#prev').style.visibility = S.step===0 ? 'hidden' : 'visible';
+  $('#next').textContent = S.step===STEPS.length-1 ? 'Ver resumen ↓' : 'Siguiente →';
+}
+function renderSeg(){
+  $('#segGrid').innerHTML = SEGMENTOS.map(s=>`<label class="opt"><input type="radio" name="seg" value="${s.id}" ${S.seg===s.id?'checked':''}>
+    <b>${esc(s.nombre)}</b><small>${esc(s.desc)}</small><div class="meta">Pago: ${s.pago.join(' / ')}%</div></label>`).join('');
+}
+function renderPlanes(){
+  const list = PLANES.filter(p=>!S.seg || p.seg===S.seg);
+  $('#planGrid').innerHTML = list.length ? list.map(p=>`<label class="opt"><input type="radio" name="plan" value="${p.id}" ${S.plan===p.id?'checked':''}>
+    <b>${esc(p.nombre)}</b><small>${esc(p.desc)}</small>
+    <div class="meta"><span><strong>${p.custom?'desde ':''}${money(p.s)}</strong></span><span>${money(p.m)}/mes</span><span>${fmtW(p.w)}</span></div></label>`).join('')
+    : '<p class="empty">Elegí primero el tipo de cliente.</p>';
+  const plan = PLANES.find(p=>p.id===S.plan);
+  $('#medidaBox').classList.toggle('hidden', !(plan && plan.custom));
+}
+function renderAdds(){
+  const plan = PLANES.find(p=>p.id===S.plan);
+  const inc = plan ? plan.inc : [];
+  $('#addGrid').innerHTML = ADICIONALES.map(a=>{
+    const isInc = inc.includes(a.id);
+    const on = isInc || S.adds.includes(a.id);
+    const dias = a.d[1] ? (a.d[0]===a.d[1] ? `+${a.d[0]} días` : `+${a.d[0]} a ${a.d[1]} días`) : 'sin plazo extra';
+    return `<label class="opt addon"><input type="checkbox" name="add" value="${a.id}" ${on?'checked':''} ${isInc?'disabled':''}>
+      ${isInc?'<span class="tag">Incluida</span>':'<span class="check" aria-hidden="true"></span>'}
+      <b>${esc(a.nombre)}</b><small>${esc(a.desc)}</small>
+      <div class="meta">${isInc?'<span>Ya está en el plan</span>':`<span><strong>${a.s?money(a.s):'—'}</strong></span><span>${a.m?money(a.m)+'/mes'+(a.mNote?' '+a.mNote:''):'sin abono'}</span><span>${dias}</span>`}</div></label>`;
+  }).join('');
+  const q = [];
+  if (plan && plan.extraProf) q.push(qtyField('profExtra','Profesionales extra (más de 4)', `${money(PRECIO.profExtra)} por mes cada uno.`));
+  if (plan && plan.users) q.push(qtyField('userExtra','Usuarios extra', `${money(PRECIO.userExtra)} por mes cada uno, sobre lo que incluye el plan.`));
+  q.push(qtyField('prods','Bloques de 100 productos para cargar', `${money(PRECIO.prod100)} y 1 día por bloque.`));
+  q.push(`<div class="field"><label for="migr">Migración desde Excel</label><select id="migr" data-k="migr">
+      <option value="0">No hace falta</option><option value="1">Simple · $60.000 · 2 días</option>
+      <option value="2">Media · $100.000 · 3 a 4 días</option><option value="3">Compleja · $150.000 · 5 días</option></select></div>`);
+  q.push(qtyField('visitas','Visitas de soporte técnico (PC, impresoras, red)', `${money(PRECIO.visita)} por visita de hasta 1 hora.`));
+  q.push(`<div class="field"><label for="integ">Integración con otro sistema ($)</label><input id="integ" data-k="integ" type="number" min="0" step="10000" inputmode="numeric"><span class="hint">Cotizala aparte y cargá el monto. 0 si no aplica.</span></div>`);
+  q.push(`<div class="field"><label for="integDias">Días extra de la integración</label><input id="integDias" data-k="integDias" type="number" min="0" step="1" inputmode="numeric"></div>`);
+  $('#qtyFields').innerHTML = q.join('');
+  bindFields($('#qtyFields'));
+}
+function qtyField(k,label,hint){
+  return `<div class="field"><label for="q-${k}">${label}</label><div class="qty"><button type="button" data-dec="${k}" aria-label="Restar">−</button><input id="q-${k}" data-k="${k}" type="number" min="0" step="1" inputmode="numeric"><button type="button" data-inc="${k}" aria-label="Sumar">+</button></div><span class="hint">${hint}</span></div>`;
+}
+function renderPub(){
+  $('#pubGrid').innerHTML = PUBLICACION.map(p=>`<label class="opt"><input type="radio" name="pub" value="${p.id}" ${S.pub===p.id?'checked':''}><b>${esc(p.nombre)}</b><small>${esc(p.desc)}</small></label>`).join('');
+}
+function bindFields(root){
+  root.querySelectorAll('[data-k]').forEach(el=>{
+    el.value = S[el.dataset.k] ?? '';
+    el.oninput = el.onchange = () => { const k = el.dataset.k; S[k] = el.type==='number' ? Math.max(0, +el.value || 0) : el.value; save(); calc(); };
+  });
+}
+
+/* ---------- cálculo ---------- */
+function calc(){
+  const seg = SEGMENTOS.find(s=>s.id===S.seg);
+  const plan = PLANES.find(p=>p.id===S.plan && (!S.seg || p.seg===S.seg));
+  const lines = [];
+  let setup=0, abono=0, w=[0,0], diasMin=0, diasMax=0, notas=[];
+  if (plan){
+    const ps = plan.custom ? +S.mSetup : plan.s, pm = plan.custom ? +S.mAbono : plan.m;
+    setup += ps; abono += pm; w = plan.custom ? [+S.mSem||1, +S.mSem||1] : [...plan.w];
+    lines.push([`Plan: ${plan.nombre}`, `${money(ps)} + ${money(pm)}/mes`]);
+    ADICIONALES.forEach(a=>{
+      if (plan.inc.includes(a.id) || !S.adds.includes(a.id)) return;
+      setup += a.s; abono += a.m; diasMin += a.d[0]; diasMax += a.d[1];
+      if (a.mNote) notas.push(`${a.nombre}: ${a.mNote}`);
+      lines.push([a.nombre, [a.s?money(a.s):'', a.m?money(a.m)+'/mes':''].filter(Boolean).join(' + ') || 'incluido']);
+    });
+    if (plan.extraProf && S.profExtra>0){ abono += S.profExtra*PRECIO.profExtra; lines.push([`${S.profExtra} profesional(es) extra`, `${money(S.profExtra*PRECIO.profExtra)}/mes`]); }
+    if (plan.users && S.userExtra>0){ abono += S.userExtra*PRECIO.userExtra; lines.push([`${S.userExtra} usuario(s) extra`, `${money(S.userExtra*PRECIO.userExtra)}/mes`]); }
+    if (S.prods>0){ setup += S.prods*PRECIO.prod100; diasMin += S.prods; diasMax += S.prods; lines.push([`Carga de ${S.prods*100} productos`, money(S.prods*PRECIO.prod100)]); }
+    const mg = PRECIO.migracion[S.migr] || [0,0,0];
+    if (mg[0]){ setup += mg[0]; diasMin += mg[1]; diasMax += mg[2]; lines.push(['Migración desde Excel', money(mg[0])]); }
+    if (S.integ>0){ setup += +S.integ; diasMin += +S.integDias; diasMax += +S.integDias; lines.push(['Integración con otro sistema', money(S.integ)]); }
+  }
+  let visitas = (plan && S.visitas>0) ? S.visitas*PRECIO.visita : 0;
+  w = [w[0] + diasMin/5, w[1] + diasMax/5];
+  const urg = S.urg==='1' && plan;
+  if (urg){ const extra = setup*0.25; setup += extra; w = [w[0]*0.7, w[1]*0.7]; lines.push(['Recargo por urgencia (25%)', '+'+money(extra)]); }
+  const descPct = +S.desc || 0;
+  if (plan && descPct){ const d = setup*descPct/100; setup -= d; lines.push([`Descuento ${descPct}% en puesta en marcha`, '−'+money(d), 'neg']); }
+  if (visitas){ lines.push([`${S.visitas} visita(s) de soporte técnico`, money(visitas)]); setup += visitas; }
+
+  // pintar
+  const who = [S.cNombre, S.cContacto].filter(Boolean).join(' · ');
+  $('#sWho').textContent = who || (plan ? plan.nombre : '');
+  $('#sSetup').textContent = money(setup); $('#mSetupT').textContent = money(setup);
+  $('#sAbono').textContent = money(abono); $('#mAbonoT').textContent = money(abono);
+  $('#sPlazo').textContent = plan ? fmtW(w) : '—'; $('#mPlazoT').textContent = plan ? fmtW(w) : '—';
+  $('#sEmpty').classList.toggle('hidden', !!plan);
+  $('#sLines').innerHTML = lines.map(([a,b,c])=>`<li class="${c||''}"><span>${esc(a)}</span><span>${esc(b)}</span></li>`).join('');
+  const pagos = plan && seg ? seg.pago.map((p,i)=>`${p}% ${seg.pago.length===3?['al aceptar','al iniciar la prueba piloto','en la entrega'][i]:['al aceptar','al entregar'][i]} (${money(setup*p/100)})`) : [];
+  $('#sPagos').innerHTML = plan ? `<b>Forma de pago:</b> ${pagos.join(' · ')}` : '';
+  $('#sAnio').innerHTML = plan ? `<b>Costo del primer año:</b> ${money(setup + abono*12)} <span style="color:var(--faint)">(sin ajuste por IPC)</span>` : '';
+  let entrega = '';
+  if (plan && S.cInicio){
+    const d0 = new Date(S.cInicio+'T12:00:00'); const add = n => { const d = new Date(d0); d.setDate(d.getDate()+Math.round(n*7)); return d.toLocaleDateString('es-AR'); };
+    entrega = `<b>Entrega estimada:</b> ${Math.round(w[0]*2)===Math.round(w[1]*2) ? add(w[1]) : `entre el ${add(w[0])} y el ${add(w[1])}`}`;
+  }
+  $('#sEntrega').innerHTML = entrega;
+  const pub = PUBLICACION.find(p=>p.id===S.pub);
+  $('#sPub').innerHTML = plan ? `<b>Publicación:</b> ${esc(S.pubUrl || pub.nombre)}` : '';
+  const hs = Math.round(((w[0]+w[1])/2) * (+S.hsSem||20));
+  $('#sHoras').innerHTML = plan ? `<b>Solo para vos:</b> como máximo ~${hs} h de trabajo (${+S.hsSem||20} h × semana durante todo el plazo), o sea al menos ${money(hs? (setup-visitas)/hs : 0)} por hora` : '';
+  $('#sNote').textContent = 'Precios finales para monotributista (Factura C). El abono incluye hosting, dominio, copias de seguridad, soporte y cambios chicos, y se ajusta cada 3 meses por IPC.' + (notas.length ? ' Costos de terceros aparte: ' + notas.join('; ') + '.' : '');
+  // texto para copiar / WhatsApp
+  const txt = plan ? [
+    `*Presupuesto${S.cNombre?' · '+S.cNombre:''}*`,
+    ``,
+    ...lines.map(([a,b])=>`• ${a}: ${b}`),
+    ``,
+    `*Puesta en marcha:* ${money(setup)}`,
+    `*Abono mensual:* ${money(abono)}`,
+    `*Plazo estimado:* ${fmtW(w)}${entrega?' ('+entrega.replace(/<[^>]+>/g,'').replace('Entrega estimada: ','entrega ')+')':''}`,
+    `*Forma de pago:* ${pagos.join(' · ')}`,
+    `*Publicación:* ${S.pubUrl || pub.nombre}`,
+    ``,
+    `Precios finales (Factura C). El abono incluye hosting, dominio, copias de seguridad, soporte y cambios chicos; se ajusta cada 3 meses por IPC.${notas.length?' Aparte: '+notas.join('; ')+'.':''}`,
+    `Presupuesto válido por ${S.valid||15} días.`,
+    ``,
+    `Fausto Cordobes · WhatsApp 294 424-2906`
+  ].join('\n') : '';
+  window._txt = txt;
+  const tel = (S.cTel||'').replace(/\D/g,'');
+  const telFull = tel ? (tel.startsWith('54') ? tel : '549'+tel.replace(/^0/,'').replace(/^(\d{2,4})15/,'$1')) : '';
+  $('#wa').href = `https://wa.me/${telFull}?text=${encodeURIComponent(txt)}`;
+  $('#wa').setAttribute('aria-disabled', plan ? 'false' : 'true');
+}
+
+/* ---------- eventos ---------- */
+document.addEventListener('change', e=>{
+  const t = e.target;
+  if (t.name==='seg'){ S.seg=t.value; const p = PLANES.find(x=>x.id===S.plan); if (p && p.seg!==S.seg) S.plan=''; renderPlanes(); renderAdds(); }
+  if (t.name==='plan'){ S.plan=t.value; renderPlanes(); renderAdds(); }
+  if (t.name==='add'){ S.adds = t.checked ? [...new Set([...S.adds,t.value])] : S.adds.filter(x=>x!==t.value); }
+  if (t.name==='pub'){ S.pub=t.value; }
+  save(); calc();
+});
+document.addEventListener('click', e=>{
+  const g = e.target.closest('[data-go]'); if (g){ S.step=+g.dataset.go; save(); renderSteps(); window.scrollTo({top:0,behavior:'smooth'}); }
+  const inc = e.target.closest('[data-inc]'), dec = e.target.closest('[data-dec]');
+  if (inc||dec){ const k=(inc||dec).dataset[inc?'inc':'dec']; S[k]=Math.max(0,(+S[k]||0)+(inc?1:-1)); $('#q-'+k).value=S[k]; save(); calc(); }
+});
+$('#prev').onclick = ()=>{ S.step=Math.max(0,S.step-1); save(); renderSteps(); };
+$('#next').onclick = ()=>{
+  if (S.step===1 && !S.seg) return toast('Elegí el tipo de cliente');
+  if (S.step===2 && !S.plan) return toast('Elegí un plan');
+  if (S.step===STEPS.length-1){ $('#sumCard').scrollIntoView({behavior:'smooth'}); return; }
+  S.step++; save(); renderSteps(); window.scrollTo({top:0,behavior:'smooth'});
+};
+$('#copy').onclick = async ()=>{
+  if (!window._txt) return toast('Primero elegí un plan');
+  try{ await navigator.clipboard.writeText(window._txt); toast('Presupuesto copiado'); }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=window._txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); toast('Presupuesto copiado');}catch(_){toast('No se pudo copiar');} ta.remove(); }
+};
+$('#wa').onclick = e=>{ if (!window._txt){ e.preventDefault(); toast('Primero elegí un plan'); } };
+$('#print').onclick = ()=>{ if (!window._txt) return toast('Primero elegí un plan'); window.print(); };
+$('#reset').onclick = ()=>{ if (!$('#reset').dataset.sure){ $('#reset').dataset.sure='1'; $('#reset').textContent='¿Seguro? Tocá de nuevo'; setTimeout(()=>{delete $('#reset').dataset.sure; $('#reset').textContent='Empezar de cero';},3000); return; }
+  S={...DEF}; save(); init(); toast('Cotizador reiniciado'); delete $('#reset').dataset.sure; $('#reset').textContent='Empezar de cero'; };
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),1800); }
+
+function init(){ renderSteps(); renderSeg(); renderPlanes(); renderAdds(); renderPub(); bindFields(document); calc(); }
+init();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+/* =========================================================
+   ANALIZADOR DE TRABAJOS HECHOS
+   Usa los mismos PLANES y ADICIONALES del cotizador.
+   ========================================================= */
+
+// Referencia de mercado en dólares (agencias y estudios argentinos)
+// Fuentes: Develop Argentina, "Cuánto cuesta hacer una app en Argentina en 2026" (jul. 2026)
+//          Develop Argentina, "¿Cuánto cuesta hacer una tienda online en Argentina?" (jun. 2026)
+//          Neolo, "¿Cuánto cuesta una página web sencilla? (2026)" (dic. 2025)
+const DOLAR_DEF = 1560; // BNA venta, 30/10/2026
+const MERCADO = {
+  1: {nombre:'Sitio web simple', usd:[500,3000], mes:[17,50]},           // Neolo: sitio básico; mantenimiento USD 200–600/año
+  2: {nombre:'Tienda o web app simple', usd:[1500,8000], mes:[145,450]}, // ecommerce básico 1.500–3.000 · app simple 3.000–8.000
+  3: {nombre:'Sistema con usuarios, pagos o panel', usd:[10000,30000]},  // app de complejidad media
+  4: {nombre:'Sistema complejo', usd:[30000,80000]}                      // app compleja
+};
+const INTEG_USD = [1000,5000]; // por integración externa (facturación, WhatsApp API, IA)
+
+// Planes genéricos para cuando no encaja ninguno del rubro
+const GENERICOS = [
+  {id:'g3', nombre:'Sistema web con usuarios y base de datos', s:900000, m:85000, inc:['panel','reportes']},
+  {id:'g4', nombre:'Sistema complejo a medida', s:1500000, m:130000, inc:['panel','reportes','pwa']}
+];
+const PAGINA_EXTRA = 30000;
+
+// Qué busca en el código. inc = incluido en cualquier plan · add = precio de ADICIONALES · s/m = precio propio
+const FEATS = [
+  {id:'responsive', nombre:'Se adapta al celular', desc:'Diseño que se acomoda a cualquier pantalla.', re:/@media[^{]*(max|min)-width|cdn\.tailwindcss|tailwindcss|bootstrap(\.min)?\.css/i, inc:true},
+  {id:'whatsapp', nombre:'Contacto o pedido por WhatsApp', desc:'Botones que abren WhatsApp con un mensaje.', re:/wa\.me\/|api\.whatsapp\.com\/send|whatsapp:\/\//i, inc:true},
+  {id:'mapa', nombre:'Mapa o ubicación', desc:'Google Maps u otro mapa con la dirección.', re:/google\.[a-z.]+\/maps|maps\.google\.|maps\.app\.goo\.gl|openstreetmap\.org|leaflet(\.min)?\.(js|css)/i, inc:true},
+  {id:'form', nombre:'Formulario de contacto', desc:'El visitante deja sus datos o una consulta.', re:/<form[\s>]|formspree\.io|emailjs|getform\.io/i, inc:true},
+  {id:'galeria', nombre:'Galería de fotos', desc:'Varias imágenes del negocio o los productos.', img:6, inc:true},
+  {id:'catalogo', nombre:'Carta o catálogo de productos', desc:'Productos o platos con precios y categorías.', re:/(productos?|platos|menuItems|items?Menu|catalogo|categorias)\s*[:=]\s*\[|class=["'][^"']*\b(product|producto|plato|menu-item)\b/i, inc:true},
+  {id:'carrito', nombre:'Carrito de compras', desc:'El cliente arma un pedido con varios productos.', re:/addToCart|add_to_cart|agregarAlCarrito|cart\.(push|items|add)\b|carrito\s*[:=]|carrito\.(push|items)|id=["']cart\b|class=["'][^"']*\bcart\b/i, inc:true},
+  {id:'turnos', nombre:'Turnos o reservas online', desc:'El cliente elige día y horario.', re:/\b(turnos?|reservas?|appointments?|bookings?)\s*[:=]\s*[\[{(]|\b(agendar|reservar|guardarTurno|crearReserva|nuevoTurno)\w*\s*\(/i, inc:true},
+  {id:'login', nombre:'Inicio de sesión', desc:'Usuarios con correo y contraseña o cuenta de Google.', re:/signInWith\w*\(|getAuth\(|supabase\.auth\.|firebase\/auth|next-auth|type=["']password["']|onAuthStateChange/i, inc:true},
+  {id:'db', nombre:'Base de datos en la nube', desc:'Los datos se guardan en un servidor (Supabase, Firebase u otro).', re:/firebase\/firestore|getFirestore\(|firebase\.firestore\(|@supabase\/supabase-js|supabase\.co\b|mongodb(\+srv)?:\/\/|@prisma\/client|new Pool\(/i, inc:true},
+  {id:'local', nombre:'Datos guardados en el dispositivo', desc:'Guarda información en el navegador.', re:/localStorage\.(get|set)Item|indexedDB\.open/, inc:true},
+  {id:'roles', nombre:'Varios perfiles de usuario', desc:'Dueño, empleados u operarios con permisos distintos.', re:/\b(rol|role|perfil)\s*[:=]=*\s*['"`](admin|empleado|operario|due[nñ]o|jefe|recepci|derivador|vendedor)|permisos\s*[:=]/i, inc:true},
+  {id:'stock', nombre:'Control de stock', desc:'Mercadería, alertas de faltantes y proveedores.', re:/\bstock(Min|Minimo|_min|Actual)?\s*[:=]|\.stock\b|["']stock["']\s*:|inventario\s*[:=]/i, inc:true},
+  {id:'caja', nombre:'Caja y ventas', desc:'Ingresos, egresos y cierre del día.', re:/\bcaja\s*[:=(]|cierreCaja|abrirCaja|cerrarCaja|arqueo\w*\s*[:=(]/i, inc:true},
+  {id:'qr', nombre:'Códigos QR', desc:'Genera o usa códigos QR.', re:/qrcode(\.min)?\.js|qr-code|qrious|new QRCode\(|kjua|html5-qrcode/i, inc:true},
+  {id:'offline', nombre:'Funciona sin señal', desc:'Guarda los datos y los envía cuando vuelve la conexión.', re:/workbox|backgroundSync|sync\.register|navigator\.onLine|addEventListener\(\s*['"]online/i, inc:true},
+  {id:'panel', nombre:'Panel de administración', desc:'El dueño edita contenido o ve pedidos.', re:/href=["'][^"']*\/(admin|panel)\b|\/admin\/|isAdmin|adminPanel|<title>[^<]*(panel|admin)/i, add:'panel'},
+  {id:'mp', nombre:'Pagos con Mercado Pago', desc:'Cobro online o señas.', re:/sdk\.mercadopago\.com|api\.mercadopago\.com|new MercadoPago\(|from ['"]mercadopago['"]|require\(['"]mercadopago|init_point|preference_?id/i, add:'mp'},
+  {id:'pwa', nombre:'App instalable (PWA)', desc:'Se agrega a la pantalla del celular como una app.', re:/rel=["']manifest["']|serviceWorker\.register/, add:'pwa'},
+  {id:'medicion', nombre:'Analytics, Clarity o Search Console', desc:'Mide visitas y comportamiento.', re:/gtag\(|googletagmanager\.com|clarity\.ms|google-site-verification/i, add:'medicion'},
+  {id:'seo', nombre:'SEO para Google', desc:'Etiquetas para buscadores y redes, datos estructurados.', re:/property=["']og:title|application\/ld\+json/i, add:'seo'},
+  {id:'idiomas', nombre:'Varios idiomas', desc:'El sitio cambia de idioma.', re:/hreflang|i18next|next-intl|data-i18n|setLang(uage)?\(/i, add:'idiomas'},
+  {id:'reservas', nombre:'Reservas de mesa', desc:'Reservas con cupos por horario.', re:/reserva\w*Mesa|mesas?\s*[:=]\s*\[|reservas?Mesa/i, add:'reservas'},
+  {id:'cupones', nombre:'Cupones o fidelidad', desc:'Descuentos, promociones o puntos.', re:/cupon(es)?\s*[:=]|aplicarCupon|coupons?\w*\s*[:=(]|puntosFidelidad/i, add:'cupones'},
+  {id:'reportes', nombre:'Reportes, gráficos o Excel', desc:'Estadísticas y exportación de datos.', re:/chart(\.umd)?(\.min)?\.js|new Chart\(|recharts|apexcharts|echarts|xlsx(\.full)?(\.min)?\.js|from ['"]xlsx|text\/csv|\.csv['"`]/i, add:'reportes'},
+  {id:'insumos', nombre:'Insumos con recetas', desc:'Cada venta descuenta ingredientes.', re:/\b(recetas?|insumos?|ingredientes?)\s*[:=]\s*[\[{]/i, add:'insumos'},
+  {id:'waAuto', nombre:'WhatsApp automático', desc:'Mensajes enviados solos por la API.', re:/graph\.facebook\.com\/v\d+[^'"`]*messages|whatsapp-web\.js|@whiskeysockets\/baileys|api\.twilio\.com/i, add:'waAuto', integ:true},
+  {id:'arca', nombre:'Facturación electrónica ARCA', desc:'Emite facturas desde el sistema.', re:/\bwsfe\b|\bwsaa\b|afipsdk|@afipsdk|afip\.js|FECAESolicitar/i, add:'arca', integ:true},
+  {id:'bot', nombre:'Asistente con IA', desc:'Responde preguntas con inteligencia artificial.', re:/api\.openai\.com|from ['"]openai['"]|api\.anthropic\.com|@anthropic-ai|generativelanguage\.googleapis|@google\/generative-ai/i, add:'bot', integ:true},
+  {id:'email', nombre:'Envío de emails automáticos', desc:'Confirmaciones o avisos por correo.', re:/api\.resend\.com|from ['"]resend['"]|@sendgrid|nodemailer|mailgun|emailjs\.send/i, s:60000, m:5000},
+  {id:'pdf', nombre:'Genera PDF o imprime', desc:'Comprobantes, presupuestos o reportes en PDF.', re:/jspdf|html2pdf|pdfmake|window\.print\(/i, s:50000, m:0},
+  {id:'push', nombre:'Notificaciones push', desc:'Avisos en el celular aunque la página esté cerrada.', re:/Notification\.requestPermission|firebase\/messaging|web-push|onesignal/i, s:100000, m:5000},
+  {id:'oscuro', nombre:'Modo oscuro', desc:'Tema claro y oscuro.', re:/prefers-color-scheme:\s*dark|data-theme=|\.dark-mode/i, s:40000, m:0}
+];
+const STACK = [
+  ['Next.js', /\/_next\/static|next\.config|"next":\s*"/], ['React', /react-dom|"react":\s*"/], ['Vue', /vue(\.runtime)?(\.global)?(\.prod)?(\.min)?\.js|"vue":\s*"/],
+  ['Svelte', /"svelte":\s*"|\.svelte-kit/], ['Tailwind', /tailwindcss|cdn\.tailwindcss/], ['Bootstrap', /bootstrap(\.bundle)?(\.min)?\.(css|js)/],
+  ['Firebase', /gstatic\.com\/firebasejs|firebaseConfig|"firebase":\s*"|firebase\/app/], ['Supabase', /@supabase\/supabase-js|supabase\.co\b/],
+  ['TypeScript', /\.tsx?$/m], ['Vercel', /vercel\.json/]
+];
+// Palabras de cada rubro para sugerir el plan
+const RUBRO_KW = {
+  carta:/\bcarta\b|platos|minutas/gi, catalogo:/cat[aá]logo|productos/gi, turnos:/\bturnos?\b/gi, pedidos:/delivery|take ?away|env[ií]o a domicilio|retiro en/gi,
+  stock:/\bstock\b|inventario|proveedor/gi, gym:/\bsocios?\b|cuotas?|gimnasio|clases/gi, pelu:/peluquer|barber|est[eé]tica|u[nñ]as/gi,
+  gastro:/restaurante|comanda|mesas?\b/gi, taller:/reparaci|orden(es)? de trabajo|service t[eé]cnico/gi, instituto:/alumnos?|cursos?|inscripci/gi,
+  cabanas:/caba[nñ]as?|hoster[ií]a|check-?in|hu[eé]sped/gi, estudio:/abogad|contador|tr[aá]mites?|expediente/gi,
+  clinica:/pacientes?|odontolog|consultorio|historia cl[ií]nica/gi, super:/c[oó]digo de barras|punto de venta|supermercado/gi,
+  inmo:/alquiler|propietario|inquilino|inmobiliaria/gi, logistica:/fletes?|choferes?|viajes?/gi,
+  coopAgua:/cooperativa|cuadrillas?|fichaje/gi, coopLuz:/reclamos?|el[eé]ctric|guardias?/gi
+};
+
+const AKEY = 'cotizador-analisis-v1';
+const ADEF = {res:null, plan:'', pags:1, checked:[], motivos:{primer:false, contado:false, conocido:false, plantilla:false},
+  pctM:{primer:20, contado:10, conocido:10, plantilla:30}, pct:0, fijo:0, abonoDesc:false, mostrar:true, cli:'', tel:'', tc:DOLAR_DEF, modo:'cotizar'};
+let A = (()=>{ try{ return Object.assign({}, ADEF, JSON.parse(localStorage.getItem(AKEY))||{}); }catch(e){ return {...ADEF}; } })();
+const asave = ()=>{ try{ localStorage.setItem(AKEY, JSON.stringify(A)); }catch(e){} };
+const MOTIVOS = [['primer','Primer cliente del rubro'],['contado','Pago de contado'],['conocido','Conocido o recomendado'],['plantilla','Trabajo ya hecho (plantilla reutilizada)']];
+const TEXT_EXT = /\.(html?|js|mjs|cjs|jsx|ts|tsx|vue|svelte|css|scss|json|webmanifest|md|txt|xml|astro|php|py)$/i;
+const IMG_EXT = /\.(png|jpe?g|webp|gif|svg|avif|ico)$/i;
+const SKIP = /(^|\/)(node_modules|\.git|\.next|\.vercel|\.cache|dist\/assets\/vendor|coverage|\.idea|\.vscode)(\/|$)/;
+const SECRET = /(^|\/)\.env/;
+
+/* ---------- modos ---------- */
+function setModo(m){
+  A.modo = m; asave();
+  document.body.classList.toggle('m-analizar', m==='analizar');
+  document.querySelectorAll('.modes button').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.modo===m)));
+}
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>setModo(b.dataset.modo));
+
+/* ---------- carga ---------- */
+const st = (msg, cls='') => { const e=$('#aStatus'); e.textContent=msg; e.className='status '+cls; };
+
+$('#aUrlBtn').onclick = async ()=>{
+  const u = $('#aUrl').value.trim();
+  if (!u) return st('Escribí el enlace de la página.', 'err');
+  if (location.protocol === 'file:') return st('El análisis por enlace funciona cuando el cotizador está publicado en Vercel. Desde el archivo, usá .zip o carpeta.', 'err');
+  st('Descargando y analizando la página… puede tardar unos segundos.');
+  try{
+    const r = await fetch('/api/analizar?url=' + encodeURIComponent(u));
+    const j = await r.json().catch(()=>({ok:false,error:'Respuesta inválida del servidor.'}));
+    if (!j.ok) return st(j.error || 'No se pudo analizar.', 'err');
+    const pagesHtml = j.pages.length;
+    analizar({origen:j.url, files:j.files, images:j.images, externals:j.externals, pages:pagesHtml, truncated:j.truncated});
+  }catch(e){ st('No se pudo conectar con el analizador. ¿Está publicado en Vercel con la carpeta api?', 'err'); }
+};
+
+async function leerZip(file){
+  if (!window.JSZip) return st('No se pudo cargar el lector de .zip. Revisá la conexión a internet.', 'err');
+  st('Leyendo el .zip…');
+  try{
+    const zip = await JSZip.loadAsync(file);
+    const files=[]; let images=0, total=0;
+    const entries = Object.values(zip.files).filter(f=>!f.dir);
+    for (const f of entries){
+      const p = f.name;
+      if (SKIP.test(p) || SECRET.test(p)) continue;
+      if (IMG_EXT.test(p)) { images++; continue; }
+      if (!TEXT_EXT.test(p) || total > 25e6) continue;
+      const txt = await f.async('string');
+      if (txt.length > 1.5e6) continue;
+      total += txt.length; files.push({path:p, content:txt});
+    }
+    analizar({origen:file.name, files, images, externals:[]});
+  }catch(e){ st('No se pudo abrir el .zip. ¿Es un archivo .zip válido?', 'err'); }
+}
+$('#aZip').onchange = e => { const f=e.target.files[0]; if (f) leerZip(f); e.target.value=''; };
+$('#aDir').onchange = async e => {
+  const list=[...e.target.files]; if (!list.length) return;
+  st('Leyendo la carpeta…');
+  const files=[]; let images=0, total=0;
+  for (const f of list){
+    const p = f.webkitRelativePath || f.name;
+    if (SKIP.test(p) || SECRET.test(p)) continue;
+    if (IMG_EXT.test(p)) { images++; continue; }
+    if (!TEXT_EXT.test(p) || f.size > 1.5e6 || total > 25e6) continue;
+    const txt = await f.text(); total += txt.length; files.push({path:p, content:txt});
+  }
+  analizar({origen:(list[0].webkitRelativePath||'').split('/')[0] || 'carpeta', files, images, externals:[]});
+  e.target.value='';
+};
+const drop = $('#aDrop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e=>{ const f=[...e.dataTransfer.files].find(x=>/\.zip$/i.test(x.name)); f ? leerZip(f) : st('Soltá un archivo .zip.', 'err'); });
+
+/* ---------- motor de análisis ---------- */
+function analizar(src){
+  const files = src.files || [];
+  if (!files.length) return st('No encontré archivos de código para analizar.', 'err');
+  const all = files.map(f=>f.content).join('\n') + '\n' + (src.externals||[]).join('\n');
+  const paths = files.map(f=>f.path).join('\n');
+  const det = {};
+  for (const F of FEATS){
+    if (F.img){ if ((src.images||0) >= F.img) det[F.id] = `${src.images} imágenes`; continue; }
+    for (const f of files){
+      const m = f.content.match(F.re);
+      if (m){ det[F.id] = `${f.path.split('/').slice(-2).join('/')}: «${m[0].slice(0,40)}»`; break; }
+    }
+    if (!det[F.id] && (src.externals||[]).some(x=>F.re.test(x))) det[F.id] = 'recurso externo';
+    if (!det[F.id] && F.id==='pwa' && /manifest\.json|webmanifest|sw\.js/.test(paths)) det[F.id] = 'archivo de manifiesto';
+  }
+  // páginas
+  let pages = src.pages;
+  if (!pages){
+    const htmls = files.filter(f=>/\.html?$/i.test(f.path)).length;
+    const routes = files.filter(f=>/(^|\/)(app\/.*\/)?page\.(t|j)sx?$|(^|\/)pages\/[^_].*\.(t|j)sx?$/.test(f.path)).length;
+    pages = Math.max(1, htmls, routes);
+  }
+  const lines = files.filter(f=>src.pages || /\.(html?|m?js|cjs|jsx|tsx?|vue|svelte|css|scss|astro|php|py)$/i.test(f.path)).reduce((n,f)=>n+f.content.split('\n').length,0);
+  const stack = STACK.filter(([n,re])=> n==='TypeScript'||n==='Vercel' ? re.test(paths) : re.test(all)).map(([n])=>n);
+
+  // nivel
+  const has = id => !!det[id];
+  const backend = has('db') || has('login');
+  let tier = 1;
+  if (has('carrito') || has('turnos') || has('mp') || has('stock') || has('caja') || (has('local') && (has('catalogo')||has('qr')))) tier = 2;
+  if (backend && (has('panel') || has('roles') || has('mp') || has('stock'))) tier = 3;
+  const nfeat = Object.keys(det).length;
+  if (tier===3 && ((has('roles') && has('offline')) || nfeat >= 16 || lines > 15000)) tier = 4;
+
+  // plan sugerido
+  const score = {};
+  for (const [id,re] of Object.entries(RUBRO_KW)) score[id] = (all.match(re)||[]).length;
+  const sinCoop = PLANES.map(p=>p.id).filter(id=>!['coopAgua','coopLuz','logistica','medida'].includes(id));
+  const porNivel = {1:['web','carta'], 2:sinCoop, 3:[...PLANES.map(p=>p.id).filter(id=>!['web','carta','medida'].includes(id)),'g3'], 4:[...PLANES.map(p=>p.id).filter(id=>!['web','carta','catalogo','turnos','medida'].includes(id)),'g4']};
+  const FUNC = ['turnos','catalogo','pedidos','carta']; // planes por función: pesan menos que los de rubro
+  const sc = id => (score[id]||0) * (FUNC.includes(id) ? 0.4 : 1);
+  const cands = porNivel[tier].filter(id=>score[id]!==undefined).sort((a,b)=>sc(b)-sc(a));
+  let plan = cands.length && sc(cands[0]) >= 3 ? cands[0] : {1:'web',2:'catalogo',3:'g3',4:'g4'}[tier];
+  if (tier===1) plan = has('catalogo') && score.carta >= 3 ? 'carta' : 'web';
+
+  A.res = {origen:src.origen, files:files.length, images:src.images||0, pages, lines, stack, tier, det, truncated:!!src.truncated, fecha:new Date().toISOString()};
+  A.plan = plan; A.pags = pages; A.checked = Object.keys(det);
+  asave(); renderA();
+  st(`Listo: ${nfeat} funciones detectadas en ${files.length} archivos. Revisá la lista y desmarcá lo que no corresponda.`, 'ok');
+}
+
+/* ---------- precios ---------- */
+const allPlans = () => [...PLANES, ...GENERICOS];
+function precioFeat(F, plan){
+  if (F.inc) return {inc:true};
+  if (F.add){
+    if (plan && plan.inc.includes(F.add)) return {inc:true};
+    const a = ADICIONALES.find(x=>x.id===F.add); return a ? {s:a.s, m:a.m, nota:a.mNote} : {inc:true};
+  }
+  return {s:F.s||0, m:F.m||0};
+}
+const etiqueta = p => p.inc ? 'Incluido' : [p.s?money(p.s):'', p.m?money(p.m)+'/mes':''].filter(Boolean).join(' + ') || 'Incluido';
+
+function calcA(){
+  const R = A.res; if (!R) return null;
+  const plan = allPlans().find(p=>p.id===A.plan) || GENERICOS[0];
+  const items = [];
+  let s = plan.s, m = plan.m;
+  items.push([`Plan base: ${plan.nombre}`, `${money(plan.s)} + ${money(plan.m)}/mes`]);
+  const extraPags = (R.tier<=2 && A.pags>5) ? A.pags-5 : 0;
+  if (extraPags){ s += extraPags*PAGINA_EXTRA; items.push([`${extraPags} página(s) extra`, money(extraPags*PAGINA_EXTRA)]); }
+  const notas = [];
+  let integ = 0;
+  for (const F of FEATS){
+    if (!A.checked.includes(F.id)) continue;
+    const p = precioFeat(F, plan);
+    if (!p.inc){ s += p.s; m += p.m; if (p.nota) notas.push(`${F.nombre}: ${p.nota}`); }
+    if (F.integ) integ++;
+    items.push([F.nombre, etiqueta(p)]);
+  }
+  const lista = s;
+  const pctMot = MOTIVOS.reduce((n,[k])=>n + (A.motivos[k] ? (+A.pctM[k]||0) : 0), 0);
+  const pct = Math.min(60, pctMot + (+A.pct||0));
+  const descPct = lista*pct/100;
+  const desc = Math.min(lista, descPct + (+A.fijo||0));
+  const setup = lista - desc;
+  const abono = A.abonoDesc ? m*(1-pct/100) : m;
+  const motivosTxt = MOTIVOS.filter(([k])=>A.motivos[k]).map(([,t])=>t);
+  if (+A.pct) motivosTxt.push(`${A.pct}% adicional`);
+  if (+A.fijo) motivosTxt.push(`${money(A.fijo)} fijo`);
+  // mercado
+  const MK = MERCADO[R.tier]; const tc = +A.tc || DOLAR_DEF;
+  let usd = [...MK.usd];
+  if (R.tier<=2 && integ){ usd = [usd[0]+integ*INTEG_USD[0], usd[1]+integ*INTEG_USD[1]]; }
+  const mes = MK.mes ? MK.mes : [usd[0]*0.15/12, usd[1]*0.20/12];
+  return {plan, items, lista, pct, desc, setup, abono, abonoLista:m, motivosTxt, notas, usd, mes, tc, integ};
+}
+
+/* ---------- render ---------- */
+function renderA(){
+  setModo(A.modo || 'cotizar');
+  $('#aCli').value = A.cli; $('#aTel').value = A.tel; $('#aPct').value = A.pct || ''; $('#aFijo').value = A.fijo || '';
+  $('#aAbonoDesc').checked = !!A.abonoDesc; $('#aMostrar').checked = !!A.mostrar; $('#aTc').value = A.tc;
+  $('#aMotivos').innerHTML = MOTIVOS.map(([k,t])=>`<div class="motivo"><input type="checkbox" id="mo-${k}" data-mo="${k}" ${A.motivos[k]?'checked':''}><label for="mo-${k}">${t}</label><input type="number" min="0" max="60" step="1" aria-label="Porcentaje para ${t}" data-mop="${k}" value="${A.pctM[k]}"><span aria-hidden="true">%</span></div>`).join('');
+  const R = A.res;
+  $('#aRes').classList.toggle('hidden', !R); $('#aDescCard').classList.toggle('hidden', !R);
+  $('#aEmpty').classList.toggle('hidden', !!R); $('#aSum').classList.toggle('hidden', !R);
+  if (!R) return;
+  const MK = MERCADO[R.tier];
+  $('#aStats').innerHTML = [
+    `<span>Origen: <b>${esc(R.origen)}</b></span>`, `<span><b>${R.pages}</b> páginas</span>`, `<span><b>${R.files}</b> archivos de código</span>`,
+    `<span><b>${R.lines.toLocaleString('es-AR')}</b> líneas</span>`, `<span><b>${R.images}</b> imágenes</span>`,
+    ...(R.stack.length ? [`<span>Hecho con: <b>${esc(R.stack.join(', '))}</b></span>`] : [])
+  ].join('');
+  $('#aTier').innerHTML = `<span class="lvl">${R.tier}/4</span><div><b>${MK.nombre}</b><p>${{1:'Páginas informativas, sin usuarios ni pagos.',2:'Tiene interacción: carrito, turnos o datos guardados, sin un servidor propio de usuarios.',3:'Tiene usuarios o base de datos en la nube, con panel, pagos o stock.',4:'Muchas funciones, varios perfiles o trabajo sin señal: un sistema grande.'}[R.tier]}${R.truncated?' Se analizó una parte del sitio porque es grande.':''}</p></div>`;
+  $('#aPlan').innerHTML = `<optgroup label="Planes de tu lista">${PLANES.map(p=>`<option value="${p.id}">${esc(p.nombre)} · ${money(p.s)}</option>`).join('')}</optgroup><optgroup label="Genéricos">${GENERICOS.map(p=>`<option value="${p.id}">${esc(p.nombre)} · ${money(p.s)}</option>`).join('')}</optgroup>`;
+  $('#aPlan').value = A.plan; $('#aPags').value = A.pags;
+  const plan = allPlans().find(p=>p.id===A.plan);
+  const row = (F, on) => { const p = precioFeat(F, plan); return `<div class="feat"><input type="checkbox" id="f-${F.id}" data-feat="${F.id}" ${on?'checked':''}><label for="f-${F.id}"><b>${esc(F.nombre)}</b><small>${esc(F.desc)}</small>${R.det[F.id]?`<span class="ev">Encontrado en ${esc(R.det[F.id])}</span>`:''}</label><span class="pr ${p.inc?'inc':''}">${etiqueta(p)}</span></div>`; };
+  const det = FEATS.filter(F=>R.det[F.id]), rest = FEATS.filter(F=>!R.det[F.id]);
+  $('#aFeats').innerHTML = det.length ? det.map(F=>row(F, A.checked.includes(F.id))).join('') : '<p class="empty">No se detectaron funciones especiales.</p>';
+  $('#aFeatsMore').innerHTML = rest.map(F=>row(F, A.checked.includes(F.id))).join('');
+  paintA();
+}
+function paintA(){
+  const C = calcA(); if (!C) return;
+  $('#aWho').textContent = [A.cli, C.plan.nombre].filter(Boolean).join(' · ');
+  const hayDesc = C.desc > 0;
+  $('#aRowLista').classList.toggle('hidden', !hayDesc); $('#aRowDesc').classList.toggle('hidden', !hayDesc);
+  $('#aLista').textContent = money(C.lista);
+  $('#aDescLbl').textContent = `Descuento${C.pct?` ${C.pct}%`:''}${C.motivosTxt.length?' · '+C.motivosTxt.join(', '):''}`;
+  $('#aDesc').textContent = '−' + money(C.desc);
+  $('#aSetup').textContent = money(C.setup);
+  $('#aAbono').textContent = money(C.abono) + (A.abonoDesc && C.pct ? ` (antes ${money(C.abonoLista)})` : '');
+  const usdF = n => 'USD ' + Math.round(n).toLocaleString('es-AR');
+  $('#aMkt').textContent = `${money(C.usd[0]*C.tc)} a ${money(C.usd[1]*C.tc)}`;
+  $('#aMktM').textContent = `${usdF(C.usd[0])} a ${usdF(C.usd[1])} · mantenimiento ${money(C.mes[0]*C.tc)} a ${money(C.mes[1]*C.tc)} por mes` + (C.integ && A.res.tier<=2 ? ` · incluye ${C.integ} integración(es)` : '');
+  const ratio = C.setup / (C.usd[0]*C.tc) * 100;
+  $('#aMktPct').textContent = `Tu precio es el ${Math.round(ratio)}% del mínimo de mercado.`;
+  $('#aLines').innerHTML = C.items.map(([a,b])=>`<li><span>${esc(a)}</span><span>${esc(b)}</span></li>`).join('');
+  // texto para el cliente
+  const lineas = C.items.map(([a,b])=>`• ${a}${b==='Incluido'?'':': '+b}`);
+  const txt = [
+    `*Presupuesto${A.cli?' · '+A.cli:''}*`, ``, `*Qué incluye:*`, ...lineas, ``,
+    ...(hayDesc && A.mostrar ? [`Precio de lista: ${money(C.lista)}`, `Descuento${C.motivosTxt.length?' ('+C.motivosTxt.join(', ')+')':''}: −${money(C.desc)}`, `*Total puesta en marcha: ${money(C.setup)}*`, `Ahorrás ${money(C.desc)}`]
+                            : [`*Puesta en marcha:* ${money(C.setup)}`]),
+    `*Abono mensual:* ${money(C.abono)}`, ``,
+    `Precios finales (Factura C). El abono incluye hosting, dominio, copias de seguridad, soporte y cambios chicos; se ajusta cada 3 meses por IPC.${C.notas.length?' Aparte: '+C.notas.join('; ')+'.':''}`,
+    ``, `Fausto Cordobes · WhatsApp 294 424-2906`
+  ].join('\n');
+  window._atxt = txt;
+  const tel = (A.tel||'').replace(/\D/g,'');
+  const telFull = tel ? (tel.startsWith('54') ? tel : '549'+tel.replace(/^0/,'').replace(/^(\d{2,4})15/,'$1')) : '';
+  $('#aWa').href = `https://wa.me/${telFull}?text=${encodeURIComponent(txt)}`;
+  // en impresión, ocultar el descuento si no se quiere mostrar
+  document.body.classList.toggle('a-ocultar-desc', !A.mostrar);
+}
+
+/* ---------- eventos ---------- */
+document.addEventListener('change', e=>{
+  const t = e.target;
+  if (t.dataset.feat){ A.checked = t.checked ? [...new Set([...A.checked, t.dataset.feat])] : A.checked.filter(x=>x!==t.dataset.feat); asave(); paintA(); }
+  if (t.dataset.mo){ A.motivos[t.dataset.mo] = t.checked; asave(); paintA(); }
+  if (t.id==='aPlan'){ A.plan = t.value; asave(); renderA(); }
+  if (t.id==='aAbonoDesc'){ A.abonoDesc = t.checked; asave(); paintA(); }
+  if (t.id==='aMostrar'){ A.mostrar = t.checked; asave(); paintA(); }
+});
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if (t.dataset.mop){ A.pctM[t.dataset.mop] = Math.max(0, Math.min(60, +t.value||0)); asave(); paintA(); }
+  const map = {aPags:'pags', aPct:'pct', aFijo:'fijo', aTc:'tc', aCli:'cli', aTel:'tel'};
+  if (map[t.id]){ const k = map[t.id]; A[k] = ['cli','tel'].includes(k) ? t.value : Math.max(0, +t.value||0); if (k==='pct') A.pct = Math.min(60, A.pct); asave(); paintA(); }
+});
+$('#aCopy').onclick = async ()=>{
+  if (!window._atxt) return toast('Primero analizá un trabajo');
+  try{ await navigator.clipboard.writeText(window._atxt); toast('Presupuesto copiado'); }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=window._atxt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); toast('Presupuesto copiado');}catch(_){toast('No se pudo copiar');} ta.remove(); }
+};
+$('#aPrint').onclick = ()=> window._atxt ? window.print() : toast('Primero analizá un trabajo');
+$('#aWa').onclick = e=>{ if (!window._atxt){ e.preventDefault(); toast('Primero analizá un trabajo'); } };
+
+renderA();
+</script>
+
+<script>
+/* Empezar de cero: en el analizador borra solo el análisis */
+(()=>{ const btn=$('#reset'), prev=btn.onclick;
+  btn.onclick = function(e){
+    if (A.modo!=='analizar') return prev.call(this,e);
+    if (!btn.dataset.sure){ btn.dataset.sure='1'; btn.textContent='¿Seguro? Tocá de nuevo'; setTimeout(()=>{delete btn.dataset.sure; btn.textContent='Empezar de cero';},3000); return; }
+    A = {...ADEF, modo:'analizar', motivos:{...ADEF.motivos}, pctM:{...ADEF.pctM}}; asave(); renderA(); st('');
+    delete btn.dataset.sure; btn.textContent='Empezar de cero'; toast('Análisis borrado');
+  };
+})();
+</script>
+</body>
+</html>
